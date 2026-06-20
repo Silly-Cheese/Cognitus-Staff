@@ -1,38 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function empPath(id) { return /databases/$(database)/documents/employees/$(id); }
+    function emp(id) { return get(empPath(id)).data; }
+    function existsEmp(id) { return exists(empPath(id)); }
+    function ownerExists() { return existsEmp('COG-EXC-001'); }
+    function active(id) {
+      return signedIn() && existsEmp(id) && emp(id).authUid == request.auth.uid && emp(id).status in ['Active', 'Training', 'On Leave'];
     }
+    function level(id) { return emp(id).accessLevel; }
+    function atLeast(id, required) { return active(id) && level(id) >= required; }
 
-    function employeePath(employeeId) {
-      return /databases/$(database)/documents/employees/$(employeeId);
-    }
-
-    function employeeDoc(employeeId) {
-      return get(employeePath(employeeId)).data;
-    }
-
-    function ownerExists() {
-      return exists(/databases/$(database)/documents/employees/COG-EXC-001);
-    }
-
-    function isActive(employeeId) {
+    function validOwnerBootstrap(employeeId) {
       return signedIn()
-        && exists(employeePath(employeeId))
-        && employeeDoc(employeeId).authUid == request.auth.uid
-        && employeeDoc(employeeId).status in ['Active', 'Training', 'On Leave'];
+        && employeeId == 'COG-EXC-001'
+        && !ownerExists()
+        && request.resource.data.employeeId == 'COG-EXC-001'
+        && request.resource.data.discordUsername == 'Executive_Eagle'
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.accessLevel == 8
+        && request.resource.data.status == 'Active';
     }
 
-    function level(employeeId) {
-      return employeeDoc(employeeId).accessLevel;
-    }
-
-    function hasLevel(employeeId, requiredLevel) {
-      return isActive(employeeId) && level(employeeId) >= requiredLevel;
-    }
-
-    function isSelfClaim() {
+    function validSelfClaim() {
       return signedIn()
         && resource.data.authUid == null
         && request.resource.data.authUid == request.auth.uid
@@ -45,37 +36,32 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow create: if signedIn()
-        && employeeId == 'COG-EXC-001'
-        && !ownerExists()
-        && request.resource.data.employeeId == 'COG-EXC-001'
-        && request.resource.data.discordUsername == 'Executive_Eagle'
-        && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.accessLevel == 8
-        && request.resource.data.status == 'Active';
-
+      allow create: if validOwnerBootstrap(employeeId)
+        || atLeast(request.resource.data.createdBy, 6);
       allow get: if signedIn();
       allow list: if signedIn();
-
-      allow update: if isSelfClaim()
-        || (signedIn() && resource.data.authUid == request.auth.uid)
-        || hasLevel(request.resource.data.updatedByEmployeeId, 6)
-        || hasLevel(request.resource.data.createdBy, 6);
-
+      allow update: if validSelfClaim()
+        || active(employeeId)
+        || atLeast(request.resource.data.updatedByEmployeeId, 6)
+        || atLeast(request.resource.data.createdBy, 6);
       allow delete: if false;
     }
 
     match /tasks/{taskId} {
       allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn();
+      allow create: if atLeast(request.resource.data.createdByEmployeeId, 4);
+      allow update: if active(request.resource.data.updatedByEmployeeId)
+        || active(resource.data.assignedToEmployeeId)
+        || atLeast(request.resource.data.updatedByEmployeeId, 4);
       allow delete: if false;
     }
 
     match /tickets/{ticketId} {
       allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn();
+      allow create: if active(request.resource.data.createdByEmployeeId);
+      allow update: if active(request.resource.data.updatedByEmployeeId)
+        || active(resource.data.createdByEmployeeId)
+        || atLeast(request.resource.data.updatedByEmployeeId, 6);
       allow delete: if false;
     }
 
