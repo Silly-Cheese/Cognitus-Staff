@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function employeePath(employeeId) {
+      return /databases/$(database)/documents/employees/$(employeeId);
+    }
+
+    function employeeDoc(employeeId) {
+      return get(employeePath(employeeId)).data;
+    }
+
+    function ownerExists() {
+      return exists(/databases/$(database)/documents/employees/COG-EXC-001);
+    }
+
+    function isActive(employeeId) {
+      return signedIn()
+        && exists(employeePath(employeeId))
+        && employeeDoc(employeeId).authUid == request.auth.uid
+        && employeeDoc(employeeId).status in ['Active', 'Training', 'On Leave'];
+    }
+
+    function level(employeeId) {
+      return employeeDoc(employeeId).accessLevel;
+    }
+
+    function hasLevel(employeeId, requiredLevel) {
+      return isActive(employeeId) && level(employeeId) >= requiredLevel;
+    }
+
+    match /employees/{employeeId} {
+      allow create: if signedIn()
+        && employeeId == 'COG-EXC-001'
+        && !ownerExists()
+        && request.resource.data.employeeId == 'COG-EXC-001'
+        && request.resource.data.discordUsername == 'Executive_Eagle'
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.accessLevel == 8
+        && request.resource.data.status == 'Active';
+
+      allow get: if signedIn();
+      allow list: if signedIn();
+
+      allow update: if signedIn()
+        && (
+          resource.data.authUid == request.auth.uid
+          || hasLevel(request.resource.data.updatedByEmployeeId, 6)
+          || hasLevel(request.resource.data.createdBy, 6)
+        );
+
+      allow delete: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+  }
+}
