@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
-import { getAuth, signInAnonymously, signOut } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
 import { firebaseSettings } from './firebase-settings.js';
 
@@ -96,7 +96,7 @@ function visibleTickets() { return can(6) ? state.tickets : state.tickets.filter
 function renderPortal(message = '') {
   root.innerHTML = `<div class="portal-layout"><aside class="sidebar"><div class="brand-row"><div class="brand-mark">CS</div><div><h1>Cognitus</h1><p>Staff Portal</p></div></div><nav class="nav-list">${navItems().map(([key,label]) => `<button class="nav-btn ${state.page === key ? 'active' : ''}" data-page="${key}">${label}</button>`).join('')}</nav><div class="sidebar-footer"><button id="logoutBtn" class="ghost-btn" style="width:100%">Sign Out</button></div></aside><main class="main"><div class="portal-topbar"><div><h2>${pageTitle()}</h2><p class="muted">${esc(state.employee.discordUsername)} • ${esc(state.employee.employeeId)} • ${esc(state.employee.rank)}</p></div><div class="topbar-actions">${badge(state.employee.status)}${badge('Access Level ' + state.employee.accessLevel)}</div></div>${message ? `<div class="notice success">${esc(message)}</div>` : ''}<section>${renderPage()}</section></main></div>`;
   document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', async () => { state.page = btn.dataset.page; await loadAll(); renderPortal(); }));
-  document.querySelector('#logoutBtn').addEventListener('click', async () => { localStorage.removeItem('cognitusEmployeeId'); await signOut(auth); location.reload(); });
+  document.querySelector('#logoutBtn').addEventListener('click', () => { localStorage.removeItem('cognitusEmployeeId'); state.employee = null; state.page = 'dashboard'; renderLogin('You have signed out of the portal on this browser.'); });
   wireActions();
 }
 function pageTitle() { return ({ dashboard:'Command Dashboard', directory:'Employee Directory', tasks:'Task Center', tickets:'Internal Tickets', employees:'Manage Employees', audits:'Audit Logs', ranks:'Rank Structure' })[state.page] || 'Staff Portal'; }
