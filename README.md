@@ -1,23 +1,32 @@
 # Cognitus Solutions Staff Portal
 
-This repository contains the starter interface for the Cognitus Solutions employee operations portal.
+This repository contains the Firebase-backed employee operations portal for Cognitus Solutions.
 
-## Included
+## Current Implementation
 
-- Static portal shell
-- Portal styling
-- Firebase settings sample file
-- Rank and department planning notes
+- Firebase module wiring
+- Firebase Auth session support without collecting employee emails
+- Firestore connection
+- Founder bootstrap record
+- Discord Username + Employee ID entry flow
+- Employee directory loading from Firestore
+- Audit log writes
+- Firestore rules
+- Firebase Hosting config
+- Rank and department structure
 
-## Intended Portal Areas
+## Founder Bootstrap
 
-- Command dashboard
-- Employee directory
-- Task center
-- Internal ticket center
-- Employee management area
-- Audit log viewer
-- Rank structure page
+On first successful load, the portal attempts to create this account if it does not already exist:
+
+| Field | Value |
+| --- | --- |
+| Discord Username | `Executive_Eagle` |
+| Employee ID | `COG-EXC-001` |
+| Rank | Founder / Chief Executive Officer |
+| Department | Executive Office |
+| Access Level | 8 |
+| Status | Active |
 
 ## Rank Structure
 
@@ -44,13 +53,34 @@ This repository contains the starter interface for the Cognitus Solutions employ
 - Technology
 - Public Relations
 
-## Setup
+## Firebase Setup
 
-1. Enable Firestore in Firebase.
-2. Copy the sample settings file to a local settings file.
-3. Add your Firebase web app settings to that local file.
-4. Deploy with Firebase Hosting or GitHub Pages.
+1. Enable Firestore Database.
+2. Enable Authentication.
+3. Enable Anonymous Authentication.
+4. Copy `firebase-settings.sample.js` to `firebase-settings.js`.
+5. Paste your Firebase web app settings into `firebase-settings.js`.
+6. Deploy Firestore rules.
+7. Deploy Hosting.
+
+## Deploy Commands
+
+```bash
+firebase login
+firebase use cognitus-staff
+firebase deploy --only firestore:rules
+firebase deploy --only hosting
+```
+
+## Collections
+
+- `employees`
+- `tasks`
+- `tickets`
+- `auditLogs`
 
 ## Security Direction
 
-Use a real identity provider before storing sensitive employee information. The cleanest later upgrade is Discord OAuth connected to approved employee records.
+This build does not collect emails. It uses a Firebase Auth session underneath the Discord Username and Employee ID flow so Firestore rules have a user session to evaluate.
+
+For a stronger future release, upgrade to Discord OAuth and match verified Discord account IDs to employee records.
