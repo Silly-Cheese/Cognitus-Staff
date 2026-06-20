@@ -32,6 +32,18 @@ service cloud.firestore {
       return isActive(employeeId) && level(employeeId) >= requiredLevel;
     }
 
+    function isSelfClaim() {
+      return signedIn()
+        && resource.data.authUid == null
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.discordUsername == resource.data.discordUsername
+        && request.resource.data.accessLevel == resource.data.accessLevel
+        && request.resource.data.rank == resource.data.rank
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.status == resource.data.status;
+    }
+
     match /employees/{employeeId} {
       allow create: if signedIn()
         && employeeId == 'COG-EXC-001'
@@ -45,12 +57,10 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if signedIn();
 
-      allow update: if signedIn()
-        && (
-          resource.data.authUid == request.auth.uid
-          || hasLevel(request.resource.data.updatedByEmployeeId, 6)
-          || hasLevel(request.resource.data.createdBy, 6)
-        );
+      allow update: if isSelfClaim()
+        || (signedIn() && resource.data.authUid == request.auth.uid)
+        || hasLevel(request.resource.data.updatedByEmployeeId, 6)
+        || hasLevel(request.resource.data.createdBy, 6);
 
       allow delete: if false;
     }
