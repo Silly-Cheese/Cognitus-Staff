@@ -9,10 +9,9 @@ service cloud.firestore {
     function active(id) {
       return signedIn() && existsEmp(id) && emp(id).authUid == request.auth.uid && emp(id).status in ['Active', 'Training', 'On Leave'];
     }
-    function level(id) { return emp(id).accessLevel; }
-    function atLeast(id, required) { return active(id) && level(id) >= required; }
+    function atLeast(id, required) { return active(id) && emp(id).accessLevel >= required; }
 
-    function validOwnerBootstrap(employeeId) {
+    function ownerBootstrap(employeeId) {
       return signedIn()
         && employeeId == 'COG-EXC-001'
         && !ownerExists()
@@ -23,7 +22,21 @@ service cloud.firestore {
         && request.resource.data.status == 'Active';
     }
 
-    function validSelfClaim() {
+    function ownerRecovery(employeeId) {
+      return signedIn()
+        && employeeId == 'COG-EXC-001'
+        && resource.data.employeeId == 'COG-EXC-001'
+        && resource.data.discordUsername == 'Executive_Eagle'
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.employeeId == resource.data.employeeId
+        && request.resource.data.discordUsername == resource.data.discordUsername
+        && request.resource.data.accessLevel == resource.data.accessLevel
+        && request.resource.data.rank == resource.data.rank
+        && request.resource.data.department == resource.data.department
+        && request.resource.data.status == resource.data.status;
+    }
+
+    function selfClaim() {
       return signedIn()
         && resource.data.authUid == null
         && request.resource.data.authUid == request.auth.uid
@@ -36,11 +49,10 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow create: if validOwnerBootstrap(employeeId)
-        || atLeast(request.resource.data.createdBy, 6);
-      allow get: if signedIn();
-      allow list: if signedIn();
-      allow update: if validSelfClaim()
+      allow create: if ownerBootstrap(employeeId) || atLeast(request.resource.data.createdBy, 6);
+      allow get, list: if signedIn();
+      allow update: if selfClaim()
+        || ownerRecovery(employeeId)
         || active(employeeId)
         || atLeast(request.resource.data.updatedByEmployeeId, 6)
         || atLeast(request.resource.data.createdBy, 6);
