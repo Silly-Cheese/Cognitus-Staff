@@ -7,26 +7,35 @@ This repository contains the Firebase-backed employee operations portal for Cogn
 - Firebase module wiring
 - Firebase Auth session support without collecting employee emails
 - Firestore connection
-- Founder bootstrap record
-- Discord Username + Employee ID entry flow
+- Discord Username plus Employee ID entry flow
 - Employee directory loading from Firestore
+- Task management
+- Internal ticket management
+- Employee management
+- Employee login-link reset
 - Audit log writes
 - Firestore rules
 - Firebase Hosting config
+- Black and white production theme
 - Rank and department structure
 
-## Founder Bootstrap
+## Login Privacy
 
-On first successful load, the portal attempts to create this account if it does not already exist:
+The public login page does not display default credentials.
 
-| Field | Value |
-| --- | --- |
-| Discord Username | `Executive_Eagle` |
-| Employee ID | `COG-EXC-001` |
-| Rank | Founder / Chief Executive Officer |
-| Department | Executive Office |
-| Access Level | 8 |
-| Status | Active |
+Employees should receive their assigned Discord Username and Employee ID from Cognitus leadership. Employee records should be created by leadership through the portal or directly in Firestore during first setup.
+
+## First Owner Setup
+
+For first setup, create one owner employee document in the `employees` collection before onboarding staff. The document ID should be the employee ID. That owner record should have:
+
+- accessLevel: 8
+- status: Active
+- department: Executive Office
+- rank: Founder / Chief Executive Officer
+- authUid: null
+
+After the owner record exists, the owner can log in with the assigned Discord Username and Employee ID. The first successful login links that browser's Firebase Auth session to the employee record.
 
 ## Rank Structure
 
