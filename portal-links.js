@@ -1,5 +1,6 @@
 const portalLinks = [
   { href: 'learning.html', label: 'Learning Portal' },
+  { href: 'assignments.html', label: 'Training Assignments' },
   { href: 'employee-edit.html', label: 'Employee Editor' }
 ];
 
