@@ -5,54 +5,33 @@ service cloud.firestore {
     function empPath(id) { return /databases/$(database)/documents/employees/$(id); }
     function emp(id) { return get(empPath(id)).data; }
     function existsEmp(id) { return exists(empPath(id)); }
-    function ownerExists() { return existsEmp('COG-EXC-001'); }
+    function hasSession(id) {
+      return existsEmp(id)
+        && (
+          emp(id).authUid == request.auth.uid
+          || (emp(id).authUids is list && request.auth.uid in emp(id).authUids)
+        );
+    }
     function active(id) {
-      return signedIn() && existsEmp(id) && emp(id).authUid == request.auth.uid && emp(id).status in ['Active', 'Training', 'On Leave'];
+      return signedIn() && existsEmp(id) && hasSession(id) && emp(id).status in ['Active', 'Training', 'On Leave'];
     }
     function atLeast(id, required) { return active(id) && emp(id).accessLevel >= required; }
-
-    function ownerBootstrap(employeeId) {
+    function loginClaim() {
       return signedIn()
-        && employeeId == 'COG-EXC-001'
-        && !ownerExists()
-        && request.resource.data.employeeId == 'COG-EXC-001'
-        && request.resource.data.discordUsername == 'Executive_Eagle'
-        && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.accessLevel == 8
-        && request.resource.data.status == 'Active';
-    }
-
-    function ownerRecovery(employeeId) {
-      return signedIn()
-        && employeeId == 'COG-EXC-001'
-        && resource.data.employeeId == 'COG-EXC-001'
-        && resource.data.discordUsername == 'Executive_Eagle'
-        && request.resource.data.authUid == request.auth.uid
         && request.resource.data.employeeId == resource.data.employeeId
         && request.resource.data.discordUsername == resource.data.discordUsername
         && request.resource.data.accessLevel == resource.data.accessLevel
         && request.resource.data.rank == resource.data.rank
         && request.resource.data.department == resource.data.department
-        && request.resource.data.status == resource.data.status;
-    }
-
-    function selfClaim() {
-      return signedIn()
-        && resource.data.authUid == null
-        && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.employeeId == resource.data.employeeId
-        && request.resource.data.discordUsername == resource.data.discordUsername
-        && request.resource.data.accessLevel == resource.data.accessLevel
-        && request.resource.data.rank == resource.data.rank
-        && request.resource.data.department == resource.data.department
-        && request.resource.data.status == resource.data.status;
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.authUids is list
+        && request.auth.uid in request.resource.data.authUids;
     }
 
     match /employees/{employeeId} {
-      allow create: if ownerBootstrap(employeeId) || atLeast(request.resource.data.createdBy, 6);
+      allow create: if atLeast(request.resource.data.createdBy, 6);
       allow get, list: if signedIn();
-      allow update: if selfClaim()
-        || ownerRecovery(employeeId)
+      allow update: if loginClaim()
         || active(employeeId)
         || atLeast(request.resource.data.updatedByEmployeeId, 6)
         || atLeast(request.resource.data.createdBy, 6);
