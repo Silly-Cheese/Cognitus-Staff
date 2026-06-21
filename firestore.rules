@@ -16,12 +16,21 @@ service cloud.firestore {
       return signedIn() && existsEmp(id) && hasSession(id) && emp(id).status in ['Active', 'Training', 'On Leave'];
     }
     function atLeast(id, required) { return active(id) && emp(id).accessLevel >= required; }
+    function actorAtLeast(required) {
+      return signedIn()
+        && request.resource.data.updatedByEmployeeId is string
+        && atLeast(request.resource.data.updatedByEmployeeId, required);
+    }
+    function creatorAtLeast(required) {
+      return signedIn()
+        && request.resource.data.createdBy is string
+        && atLeast(request.resource.data.createdBy, required);
+    }
     function loginClaim() {
       return signedIn()
         && request.resource.data.employeeId == resource.data.employeeId
         && request.resource.data.discordUsername == resource.data.discordUsername
         && request.resource.data.accessLevel == resource.data.accessLevel
-        && request.resource.data.rank == resource.data.rank
         && request.resource.data.department == resource.data.department
         && request.resource.data.status == resource.data.status
         && request.resource.data.authUids is list
@@ -29,12 +38,9 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow create: if atLeast(request.resource.data.createdBy, 6);
+      allow create: if creatorAtLeast(6) || actorAtLeast(6);
       allow get, list: if signedIn();
-      allow update: if loginClaim()
-        || active(employeeId)
-        || atLeast(request.resource.data.updatedByEmployeeId, 6)
-        || atLeast(request.resource.data.createdBy, 6);
+      allow update: if loginClaim() || active(employeeId) || actorAtLeast(6) || creatorAtLeast(6);
       allow delete: if false;
     }
 
@@ -53,6 +59,15 @@ service cloud.firestore {
       allow update: if active(request.resource.data.updatedByEmployeeId)
         || active(resource.data.createdByEmployeeId)
         || atLeast(request.resource.data.updatedByEmployeeId, 6);
+      allow delete: if false;
+    }
+
+    match /iaCases/{caseId} {
+      allow read: if signedIn();
+      allow create: if atLeast(request.resource.data.createdByEmployeeId, 4);
+      allow update: if atLeast(request.resource.data.updatedByEmployeeId, 4)
+        || active(resource.data.assignedToEmployeeId)
+        || active(resource.data.createdByEmployeeId);
       allow delete: if false;
     }
 
