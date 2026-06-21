@@ -71,6 +71,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /trainingCourses/{courseId} {
+      allow read: if signedIn();
+      allow create: if atLeast(request.resource.data.createdByEmployeeId, 6);
+      allow update: if atLeast(request.resource.data.updatedByEmployeeId, 6);
+      allow delete: if false;
+    }
+
+    match /trainingResults/{resultId} {
+      allow read: if signedIn();
+      allow create: if active(request.resource.data.employeeId);
+      allow update: if active(request.resource.data.employeeId) || atLeast(request.resource.data.updatedByEmployeeId, 6);
+      allow delete: if false;
+    }
+
     match /auditLogs/{logId} {
       allow read: if signedIn();
       allow create: if signedIn();
